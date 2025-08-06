@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# レビューコメントやサマリーに使用される言語を設定します
+# 日本語の場合は "ja-JP" を指定します
+language: "ja-JP"
+
+# 早期アクセス機能を有効にするかどうか
+early_access: false
+
+# コードレビューに関する設定
+reviews:
+  # レビューの厳しさを設定します (例: "assertive", "chill")
+  # "chill" はリラックスしたレビューです
+  profile: "chill"
+
+  # CodeRabbitが変更を要求するワークフローを有効にするか
+  request_changes_workflow: true
+
+  # PRの概要を生成するかどうか
+  high_level_summary: true
+
+  # 変更を称える詩を生成するかどうか（日本語だと不自然な場合があるので無効化を推奨）
+  poem: false
+
+  # レビューのステータスを更新するかどうか
+  review_status: true
+
+  # 詳細なウォークスルーコメントをデフォルトで折りたたむかどうか
+  collapse_walkthrough: false
+
+  # 自動レビューの設定
+  auto_review:
+    # 有効にするかどうか
+    enabled: true
+    # ドラフトPRをレビュー対象とするか
+    drafts: false
+
+  # レビュー対象から除外するファイルのパターンを指定します
+  path_filters:
+    # ドキュメントファイルを除外
+    - "!**/*.md"
+    # ロックファイルを除外
+    - "!**/*.lock"
+    # 画像ファイルを除外
+    - "!**/*.{png,jpg,jpeg,gif}"
+    # テスト用のデータなどを除外
+    - "!testdata/**"
+
+# チャット機能に関する設定
+chat:
+  # PRへのコメントに対して自動で返信する機能を有効にするか
+  auto_reply: true 

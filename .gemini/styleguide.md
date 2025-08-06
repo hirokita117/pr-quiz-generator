@@ -1,0 +1,8 @@
+- 日本語でやりとりしたいです。
+- 下記に関するコメントをする場合は、出来るだけ丁寧に初学者でも分かりやすい形でコメントしてください。
+    - React
+    - TypeScript
+    - shadcn/ui
+    - zustand
+    - axios
+    - Tailwind CSS
