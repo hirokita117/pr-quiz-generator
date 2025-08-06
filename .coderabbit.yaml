@@ -40,7 +40,10 @@ reviews:
     # ドキュメントファイルを除外
     - "!**/*.md"
     # ロックファイルを除外
-    - "!**/*.lock"
+    - "!**/package-lock.json"
+    - "!**/pnpm-lock.yaml"
+    - "!**/yarn.lock"
+    - "!**/bun.lockb"
     # 画像ファイルを除外
     - "!**/*.{png,jpg,jpeg,gif}"
     # テスト用のデータなどを除外
