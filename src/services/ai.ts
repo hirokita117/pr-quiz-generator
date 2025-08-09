@@ -88,6 +88,53 @@ function extractStringPath(data: unknown, path: string[]): string | undefined {
   return typeof current === 'string' ? current : undefined;
 }
 
+// パッチテキスト内の機密情報をマスキング
+function sanitizePatch(patch: string): string {
+  if (!patch) return patch;
+
+  let result = patch;
+
+  const replacements: Array<[RegExp, string]> = [
+    // PEM/SSH 秘密鍵ブロック
+    [/(-----BEGIN [A-Z ]*PRIVATE KEY-----)[\s\S]*?(-----END [A-Z ]*PRIVATE KEY-----)/g, '$1\n[REDACTED]\n$2'],
+    [/(-----BEGIN OPENSSH PRIVATE KEY-----)[\s\S]*?(-----END OPENSSH PRIVATE KEY-----)/g, '$1\n[REDACTED]\n$2'],
+
+    // Authorization や API キー系ヘッダー
+    [/((?:Authorization|authorization)\s*:\s*Bearer\s+)[^\s]+/g, '$1[REDACTED]'],
+    [/((?:X-|x-)?Api[-_]?Key\s*:\s*)[^\s]+/g, '$1[REDACTED]'],
+
+    // JWT トークン
+    [/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '[REDACTED_JWT]'],
+
+    // 各種既知のトークン形式
+    [/\bgh[oprsu]_[A-Za-z0-9]{36,255}\b/g, '[REDACTED_GITHUB_TOKEN]'],
+    [/\bxox[baprs]-[A-Za-z0-9-]{10,48}\b/g, '[REDACTED_SLACK_TOKEN]'],
+    [/\bAIza[0-9A-Za-z\-_]{35}\b/g, '[REDACTED_GOOGLE_API_KEY]'],
+    [/\bsk_(?:live|test)_[0-9A-Za-z]{16,}\b/g, '[REDACTED_STRIPE_SECRET_KEY]'],
+
+    // AWS 資格情報
+    [/\b(?:AKIA|ASIA|AGPA|AIDA|ANPA|AROA|A3T)[A-Z0-9]{16}\b/g, '[REDACTED_AWS_ACCESS_KEY_ID]'],
+    [/(\baws[_-]?secret[_-]?access[_-]?key\b\s*[:=]\s*)(['"]?)[^'"\s]+(\2)/gi, '$1$2[REDACTED]$2'],
+    [/(\baws[_-]?access[_-]?key[_-]?id\b\s*[:=]\s*)(['"]?)[^'"\s]+(\2)/gi, '$1$2[REDACTED]$2'],
+
+    // 一般的な機密キー名の KV 形式
+    [/(\b[A-Za-z0-9_.-]*?(?:secret|token|password|passwd|pwd|api[-_]?key|access[-_]?key|private[-_]?key|client[-_]?secret)[A-Za-z0-9_.-]*\b\s*[:=]\s*)(['"]?)[^'"\s]+(\2)/gi, '$1$2[REDACTED]$2'],
+
+    // JSON/YAML 風の "key": "value"
+    [/("?[A-Za-z0-9_.-]*?(?:secret|token|password|passwd|pwd|api[-_]?key|access[-_]?key|private[-_]?key|client[-_]?secret)"?\s*:\s*)(["'])([\s\S]*?)(\2)/gi, '$1$2[REDACTED]$2'],
+
+    // 長い Base64 っぽい文字列や HEX 文字列
+    [/\b[A-Za-z0-9+/]{30,}={0,2}\b/g, '[REDACTED_B64]'],
+    [/\b[0-9a-fA-F]{32,}\b/g, '[REDACTED_HEX]'],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    result = result.replace(pattern, replacement);
+  }
+
+  return result;
+}
+
 export class OpenAIService extends AIService {
   private client: AxiosInstance;
 
@@ -207,7 +254,8 @@ export class OpenAIService extends AIService {
     ).join('\n');
 
     const filesText = pullRequest.files.slice(0, 5).map(file => {
-      const patchPreview = file.patch ? file.patch.split('\n').slice(0, 20).join('\n') : '';
+      const rawPatchPreview = file.patch ? file.patch.split('\n').slice(0, 20).join('\n') : '';
+      const patchPreview = sanitizePatch(rawPatchPreview);
       return `## ${file.filename} (${file.language || 'unknown'})\n状態: ${file.status}\n追加: ${file.additions}行, 削除: ${file.deletions}行\n\n変更内容:\n\`\`\`\n${patchPreview}\n\`\`\``;
     }).join('\n\n');
 
@@ -326,7 +374,8 @@ export class GoogleAIService extends AIService {
     ).join('\n');
 
     const filesText = pullRequest.files.slice(0, 5).map(file => {
-      const patchPreview = file.patch ? file.patch.split('\n').slice(0, 20).join('\n') : '';
+      const rawPatchPreview = file.patch ? file.patch.split('\n').slice(0, 20).join('\n') : '';
+      const patchPreview = sanitizePatch(rawPatchPreview);
       return `## ${file.filename} (${file.language || 'unknown'})\n状態: ${file.status}\n追加: ${file.additions}行, 削除: ${file.deletions}行\n\n変更内容:\n\`\`\`\n${patchPreview}\n\`\`\``;
     }).join('\n\n');
 
@@ -451,7 +500,8 @@ export class LocalLLMService extends AIService {
     ).join('\n');
 
     const filesText = pullRequest.files.slice(0, 5).map(file => {
-      const patchPreview = file.patch ? file.patch.split('\n').slice(0, 20).join('\n') : '';
+      const rawPatchPreview = file.patch ? file.patch.split('\n').slice(0, 20).join('\n') : '';
+      const patchPreview = sanitizePatch(rawPatchPreview);
       return `## ${file.filename} (${file.language || 'unknown'})\n状態: ${file.status}\n追加: ${file.additions}行, 削除: ${file.deletions}行\n\n変更内容:\n\`\`\`\n${patchPreview}\n\`\`\``;
     }).join('\n\n');
 
