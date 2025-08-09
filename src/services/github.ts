@@ -46,6 +46,34 @@ interface GitHubReviewResponse {
   submitted_at: string;
 }
 
+// GitHub Rate Limit API レスポンスの型定義
+interface RateLimitCategory {
+  limit: number;
+  used: number;
+  remaining: number;
+  reset: number;
+}
+
+interface RateLimitResources {
+  core: RateLimitCategory;
+  search: RateLimitCategory;
+  graphql: RateLimitCategory;
+  integration_manifest?: RateLimitCategory;
+  dependency_snapshots?: RateLimitCategory;
+  dependency_sbom?: RateLimitCategory;
+  code_scanning_upload?: RateLimitCategory;
+  actions_runner_registration?: RateLimitCategory;
+  source_import?: RateLimitCategory;
+  code_search?: RateLimitCategory;
+  code_scanning_autofix?: RateLimitCategory;
+  scim?: RateLimitCategory;
+}
+
+interface RateLimitResponse {
+  resources: RateLimitResources;
+  rate: RateLimitCategory; // Legacy field for backwards compatibility
+}
+
 // PR URL情報の型
 interface PRInfo {
   owner: string;
@@ -56,12 +84,12 @@ interface PRInfo {
 // GitHub API エラー
 export class GitHubAPIError extends Error {
   public statusCode: number;
-  public details?: any;
+  public details?: unknown;
   
   constructor(
     message: string,
     statusCode: number,
-    details?: any
+    details?: unknown
   ) {
     super(message);
     this.name = 'GitHubAPIError';
@@ -109,7 +137,7 @@ export class GitHubService {
    * PR URLからオーナー、リポジトリ、PR番号を抽出
    */
   extractPRInfo(prUrl: string): PRInfo {
-    const regex = /github\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)/;
+    const regex = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/|$|\?)/;
     const match = prUrl.match(regex);
 
     if (!match) {
@@ -310,7 +338,7 @@ export class GitHubService {
   /**
    * レート制限情報を取得
    */
-  async getRateLimit(): Promise<any> {
+  async getRateLimit(): Promise<RateLimitResponse> {
     try {
       const response = await this.client.get('/rate_limit');
       return response.data;

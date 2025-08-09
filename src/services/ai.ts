@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
-import type { Question, PullRequest, QuizConfig, FocusArea, LocalLLMConfig } from '@/types';
+import type { Question, PullRequest, PRFile, QuizConfig, FocusArea, LocalLLMConfig } from '@/types';
 import { env } from '@/utils/env';
 
 // クイズ生成のコンテキスト
@@ -17,7 +17,7 @@ export interface QuizContext {
 
 // コード変更の分析結果
 interface CodeChange {
-  type: 'added' | 'modified' | 'deleted';
+  type: 'added' | 'modified' | 'deleted' | 'renamed';
   filename: string;
   language: string;
   linesChanged: number;
@@ -25,15 +25,36 @@ interface CodeChange {
   summary: string;
 }
 
+// AIレスポンスの生問題データ構造
+interface RawQuestionResponse {
+  id?: string;
+  type?: 'multiple-choice' | 'true-false' | 'code-review' | 'explanation';
+  content: string;
+  code?: {
+    language?: string;
+    content: string;
+    filename?: string;
+  };
+  options?: Array<{
+    id: string;
+    text: string;
+    isCorrect: boolean;
+  }>;
+  correctAnswer: string | string[];
+  explanation: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  tags?: string[];
+}
+
 // AI サービスエラー
 export class AIServiceError extends Error {
   public provider: string;
-  public details?: any;
+  public details?: unknown;
   
   constructor(
     message: string,
     provider: string,
-    details?: any
+    details?: unknown
   ) {
     super(message);
     this.name = 'AIServiceError';
@@ -196,7 +217,7 @@ ${filesText}
       const parsed = JSON.parse(content);
       const questions = parsed.questions || [];
 
-      return questions.slice(0, questionCount).map((q: any, index: number) => ({
+      return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
         id: q.id || `question-${index + 1}`,
         type: q.type || 'multiple-choice',
         content: q.content,
@@ -314,7 +335,7 @@ ${filesText}
       const parsed = JSON.parse(jsonContent);
       const questions = parsed.questions || [];
 
-      return questions.slice(0, questionCount).map((q: any, index: number) => ({
+      return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
         id: q.id || `question-${index + 1}`,
         type: q.type || 'multiple-choice',
         content: q.content,
@@ -430,7 +451,7 @@ ${filesText}
       const parsed = JSON.parse(content);
       const questions = parsed.questions || [];
 
-      return questions.slice(0, questionCount).map((q: any, index: number) => ({
+      return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
         id: q.id || `question-${index + 1}`,
         type: q.type || 'multiple-choice',
         content: q.content,
@@ -522,7 +543,7 @@ export class QuizGenerator {
   /**
    * ファイル変更の分析
    */
-  private analyzeChanges(files: any[]): CodeChange[] {
+  private analyzeChanges(files: PRFile[]): CodeChange[] {
     return files.map(file => ({
       type: file.status,
       filename: file.filename,
@@ -548,7 +569,7 @@ export class QuizGenerator {
   /**
    * ファイルの複雑度を計算
    */
-  private calculateFileComplexity(file: any): number {
+  private calculateFileComplexity(file: PRFile): number {
     const lineChanges = file.additions + file.deletions;
     return Math.min(10, Math.floor(lineChanges / 10));
   }
@@ -556,8 +577,8 @@ export class QuizGenerator {
   /**
    * 使用言語を検出
    */
-  private detectLanguages(files: any[]): string[] {
-    const languages = new Set(files.map(file => file.language).filter(Boolean));
+  private detectLanguages(files: PRFile[]): string[] {
+    const languages = new Set(files.map(file => file.language).filter((lang): lang is string => Boolean(lang)));
     return Array.from(languages);
   }
 

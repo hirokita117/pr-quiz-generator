@@ -60,6 +60,7 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
   
   generateQuiz: async (prUrl: string, options?: GenerateOptions) => {
     const state = get();
+    const startTime = Date.now(); // 処理開始時間を記録
     
     try {
       set({ isLoading: true, error: null, pullRequestUrl: prUrl });
@@ -79,6 +80,9 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
       const context = generator.buildContext(pullRequest, options);
       const questions = await generator.generateQuestions(context);
       
+      // 処理時間を計算
+      const processingTime = Date.now() - startTime;
+      
       // クイズオブジェクトを構築
       const quiz: Quiz = {
         id: `quiz-${Date.now()}`,
@@ -87,7 +91,7 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
         metadata: {
           generatedBy: 'PR Quiz Generator',
           aiProvider: config.aiProvider,
-          processingTime: Date.now(), // 実際の処理時間は別途計測が必要
+          processingTime,
           complexity: context.complexity,
           focusAreas: context.focusAreas,
         },
@@ -95,9 +99,10 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
       };
       
       set({ currentQuiz: quiz, isLoading: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'クイズの生成中にエラーが発生しました';
       set({ 
-        error: error.message || 'クイズの生成中にエラーが発生しました',
+        error: errorMessage,
         isLoading: false 
       });
     }
