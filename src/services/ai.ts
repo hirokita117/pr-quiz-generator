@@ -71,6 +71,23 @@ export abstract class AIService {
 }
 
 // OpenAI サービス実装
+// 安全にネストしたプロパティから文字列を取得するユーティリティ
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function extractStringPath(data: unknown, path: string[]): string | undefined {
+  let current: unknown = data;
+  for (const segment of path) {
+    if (isRecord(current) && segment in current) {
+      current = (current as Record<string, unknown>)[segment];
+    } else {
+      return undefined;
+    }
+  }
+  return typeof current === 'string' ? current : undefined;
+}
+
 export class OpenAIService extends AIService {
   private client: AxiosInstance;
 
@@ -115,14 +132,19 @@ export class OpenAIService extends AIService {
         max_tokens: 4000,
       });
 
-      const content = response.data.choices[0].message.content;
+      const content = response?.data?.choices?.[0]?.message?.content ?? '';
+      if (typeof content !== 'string' || content.trim() === '') {
+        throw new AIServiceError('OpenAI API returned empty content', 'openai', response?.data);
+      }
       return this.parseResponse(content, context.questionCount);
-    } catch (error: any) {
-      throw new AIServiceError(
-        `OpenAI API error: ${error.response?.data?.error?.message || error.message}`,
-        'openai',
-        error.response?.data
-      );
+    } catch (unknownError) {
+      const isAxiosErr = axios.isAxiosError(unknownError);
+      const details = isAxiosErr ? unknownError.response?.data : undefined;
+      const messageFromData = isAxiosErr ? extractStringPath(details, ['error', 'message']) : undefined;
+      const message = messageFromData
+        || (unknownError instanceof Error ? unknownError.message : undefined)
+        || 'Unknown error';
+      throw new AIServiceError(`OpenAI API error: ${message}`, 'openai', details);
     }
   }
 
@@ -257,7 +279,7 @@ export class GoogleAIService extends AIService {
     try {
       await this.client.get('/models');
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -278,14 +300,19 @@ export class GoogleAIService extends AIService {
         },
       });
 
-      const content = response.data.candidates[0].content.parts[0].text;
+      const content = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      if (typeof content !== 'string' || content.trim() === '') {
+        throw new AIServiceError('Google AI returned empty content', 'google', response?.data);
+      }
       return this.parseResponse(content, context.questionCount);
-    } catch (error: any) {
-      throw new AIServiceError(
-        `Google AI API error: ${error.response?.data?.error?.message || error.message}`,
-        'google',
-        error.response?.data
-      );
+    } catch (unknownError) {
+      const isAxiosErr = axios.isAxiosError(unknownError);
+      const details = isAxiosErr ? unknownError.response?.data : undefined;
+      const messageFromData = isAxiosErr ? extractStringPath(details, ['error', 'message']) : undefined;
+      const message = messageFromData
+        || (unknownError instanceof Error ? unknownError.message : undefined)
+        || 'Unknown error';
+      throw new AIServiceError(`Google AI API error: ${message}`, 'google', details);
     }
   }
 
@@ -378,7 +405,7 @@ export class LocalLLMService extends AIService {
     try {
       await this.client.get('/api/tags');
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -398,14 +425,19 @@ export class LocalLLMService extends AIService {
         },
       });
 
-      const content = response.data.response;
+      const content = response?.data?.response ?? '';
+      if (typeof content !== 'string' || content.trim() === '') {
+        throw new AIServiceError('Local LLM returned empty content', 'local', response?.data);
+      }
       return this.parseResponse(content, context.questionCount);
-    } catch (error: any) {
-      throw new AIServiceError(
-        `Local LLM error: ${error.response?.data?.error || error.message}`,
-        'local',
-        error.response?.data
-      );
+    } catch (unknownError) {
+      const isAxiosErr = axios.isAxiosError(unknownError);
+      const details = isAxiosErr ? unknownError.response?.data : undefined;
+      const messageFromData = isAxiosErr ? extractStringPath(details, ['error']) : undefined;
+      const message = messageFromData
+        || (unknownError instanceof Error ? unknownError.message : undefined)
+        || 'Unknown error';
+      throw new AIServiceError(`Local LLM error: ${message}`, 'local', details);
     }
   }
 
@@ -634,7 +666,7 @@ export class QuizGenerator {
   /**
    * ファイル変更の要約
    */
-  private summarizeFileChanges(file: any): string {
+  private summarizeFileChanges(file: PRFile): string {
     const { status, additions, deletions } = file;
     return `${status} file with ${additions} additions and ${deletions} deletions`;
   }

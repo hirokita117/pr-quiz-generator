@@ -138,7 +138,7 @@ export interface APIResponse<T> {
 export interface APIError {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 // UI状態の型定義
