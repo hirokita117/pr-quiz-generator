@@ -16,9 +16,7 @@ import {
 } from 'lucide-react';
 import type { Question } from '@/types';
 
-interface QuizDisplayProps {}
-
-export const QuizDisplay: React.FC<QuizDisplayProps> = () => {
+export const QuizDisplay: React.FC = () => {
   const { currentQuiz } = useQuizStore();
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [showResults, setShowResults] = useState(false);

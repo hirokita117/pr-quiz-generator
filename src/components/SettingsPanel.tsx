@@ -180,7 +180,7 @@ export const SettingsPanel: React.FC = () => {
             <label className="text-sm">難易度</label>
             <Select 
               value={config.difficulty || 'mixed'} 
-              onValueChange={(value) => updateConfig({ difficulty: value as any })}
+              onValueChange={(value) => updateConfig({ difficulty: value as 'easy' | 'medium' | 'hard' | 'mixed' })}
             >
               <SelectTrigger>
                 <SelectValue />

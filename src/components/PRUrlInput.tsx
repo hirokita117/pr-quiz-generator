@@ -24,7 +24,7 @@ export const PRUrlInput: React.FC = () => {
   };
 
   const isValidGitHubUrl = (url: string): boolean => {
-    const githubPrRegex = /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/\d+$/;
+    const githubPrRegex = /^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+$/;
     return githubPrRegex.test(url);
   };
 
