@@ -14,7 +14,7 @@ reviews:
   profile: "chill"
 
   # CodeRabbitが変更を要求するワークフローを有効にするか
-  request_changes_workflow: true
+  request_changes_workflow: false
 
   # PRの概要を生成するかどうか
   high_level_summary: true
