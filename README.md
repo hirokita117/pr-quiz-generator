@@ -72,3 +72,39 @@ cp .env.example .env
 | **状態管理** | Zustand |
 | **HTTPクライアント** | Axios |
 | **アイコン** | Lucide React |
+
+## 📄 対応ファイル拡張子
+
+現在サポートしている拡張子と言語の対応は次のとおりです。
+
+| 拡張子 | 言語 |
+|---|---|
+| `.js` | JavaScript |
+| `.jsx` | JavaScript |
+| `.ts` | TypeScript |
+| `.tsx` | TypeScript |
+| `.py` | Python |
+| `.java` | Java |
+| `.cpp` | C++ |
+| `.c` | C |
+| `.cs` | C# |
+| `.php` | PHP |
+| `.rb` | Ruby |
+| `.go` | Go |
+| `.rs` | Rust |
+| `.swift` | Swift |
+| `.kt` | Kotlin |
+| `.scala` | Scala |
+| `.html` | HTML |
+| `.css` | CSS |
+| `.scss` | SCSS |
+| `.sass` | SASS |
+| `.md` | Markdown |
+| `.json` | JSON |
+| `.xml` | XML |
+| `.yml` | YAML |
+| `.yaml` | YAML |
+| `.sh` | Bash |
+| `.sql` | SQL |
+
+対応表の実装は `src/services/github.ts` の `detectLanguage` を参照してください。

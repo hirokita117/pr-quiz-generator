@@ -302,6 +302,7 @@ export class GitHubService {
       await this.client.get('/user');
       return true;
     } catch (error) {
+      console.debug('GitHub API connection test failed:', error);
       return false;
     }
   }

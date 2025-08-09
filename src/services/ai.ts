@@ -74,6 +74,7 @@ export class OpenAIService extends AIService {
       await this.client.get('/models');
       return true;
     } catch (error) {
+      console.debug(`${this.getName()} connection validation failed:`, error);
       return false;
     }
   }
