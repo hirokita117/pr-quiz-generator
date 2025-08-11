@@ -14,6 +14,7 @@ export const SettingsPanel: React.FC = () => {
   const [openaiKey, setOpenaiKey] = useState(config.apiKeys?.openai || '');
   const [googleKey, setGoogleKey] = useState(config.apiKeys?.google || '');
   const [localEndpoint, setLocalEndpoint] = useState(config.localLLM?.endpoint || 'http://localhost:11434');
+  const [localModel, setLocalModel] = useState(config.localLLM?.model || 'llama2');
   const [showKeys, setShowKeys] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testStatus, setTestStatus] = useState<null | 'success' | 'error'>(null);
@@ -24,10 +25,12 @@ export const SettingsPanel: React.FC = () => {
     const savedOpenaiKey = localStorage.getItem('pr-quiz-openai-key') || '';
     const savedGoogleKey = localStorage.getItem('pr-quiz-google-key') || '';
     const savedLocalEndpoint = localStorage.getItem('pr-quiz-local-endpoint') || 'http://localhost:11434';
+    const savedLocalModel = localStorage.getItem('pr-quiz-local-model') || 'llama2';
     
     setOpenaiKey(savedOpenaiKey);
     setGoogleKey(savedGoogleKey);
     setLocalEndpoint(savedLocalEndpoint);
+    setLocalModel(savedLocalModel);
     
     // ストアも更新
     updateConfig({
@@ -37,7 +40,7 @@ export const SettingsPanel: React.FC = () => {
       },
       localLLM: {
         endpoint: savedLocalEndpoint,
-        model: 'llama2',
+        model: savedLocalModel,
       },
     });
   }, [updateConfig]);
@@ -51,6 +54,7 @@ export const SettingsPanel: React.FC = () => {
     localStorage.setItem('pr-quiz-openai-key', openaiKey);
     localStorage.setItem('pr-quiz-google-key', googleKey);
     localStorage.setItem('pr-quiz-local-endpoint', localEndpoint);
+    localStorage.setItem('pr-quiz-local-model', localModel);
     
     // ストアを更新
     updateConfig({
@@ -60,7 +64,7 @@ export const SettingsPanel: React.FC = () => {
       },
       localLLM: {
         endpoint: localEndpoint,
-        model: 'llama2',
+        model: localModel,
       },
     });
     
@@ -84,7 +88,7 @@ export const SettingsPanel: React.FC = () => {
         localLLM: config.aiProvider === 'local'
           ? {
               endpoint: localEndpoint,
-              model: config.localLLM?.model || 'llama2',
+              model: localModel || config.localLLM?.model || 'llama2',
               apiKey: config.localLLM?.apiKey,
             }
           : config.localLLM,
@@ -215,8 +219,28 @@ export const SettingsPanel: React.FC = () => {
               type="url"
               placeholder="http://localhost:11434"
               value={localEndpoint}
-              onChange={(e) => setLocalEndpoint(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setLocalEndpoint(v);
+                updateConfig({ localLLM: { endpoint: v, model: localModel } });
+              }}
             />
+            <div className="space-y-2 pt-2">
+              <label className="text-sm font-medium">モデル名</label>
+              <Input
+                type="text"
+                placeholder="gpt-oss:20b など"
+                value={localModel}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setLocalModel(v);
+                  updateConfig({ localLLM: { endpoint: localEndpoint, model: v } });
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Ollama にインストール済みのモデル名を指定してください（例: gpt-oss:20b）。
+              </p>
+            </div>
             <p className="text-xs text-muted-foreground">
               Ollamaサーバーのエンドポイントを指定してください
             </p>

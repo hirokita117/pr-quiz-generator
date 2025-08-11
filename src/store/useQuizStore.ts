@@ -20,10 +20,34 @@ interface QuizStore extends UIState {
   reset: () => void;
 }
 
+// ローカルストレージから設定をハイドレート
+function readLocalStorage(key: string): string | undefined {
+  try {
+    if (typeof window !== 'undefined' && 'localStorage' in window) {
+      const v = window.localStorage.getItem(key);
+      return v ?? undefined;
+    }
+  } catch {}
+  return undefined;
+}
+
+const savedOpenaiKey = readLocalStorage('pr-quiz-openai-key');
+const savedGoogleKey = readLocalStorage('pr-quiz-google-key');
+const savedLocalEndpoint = readLocalStorage('pr-quiz-local-endpoint');
+const savedLocalModel = readLocalStorage('pr-quiz-local-model');
+
 const initialConfig: QuizConfig = {
   aiProvider: env.app.defaultAIProvider as AIProvider,
   questionCount: env.app.defaultQuestionCount,
   difficulty: env.app.defaultDifficulty as 'easy' | 'medium' | 'hard' | 'mixed',
+  apiKeys: {
+    ...(savedOpenaiKey ? { openai: savedOpenaiKey } : {}),
+    ...(savedGoogleKey ? { google: savedGoogleKey } : {}),
+  },
+  localLLM: {
+    endpoint: savedLocalEndpoint || env.localLLM.endpoint,
+    model: savedLocalModel || env.localLLM.model,
+  },
   cache: {
     enabled: env.cache.enabled,
     ttl: env.cache.ttl,

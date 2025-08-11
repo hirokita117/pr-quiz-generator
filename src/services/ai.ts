@@ -452,9 +452,17 @@ export class LocalLLMService extends AIService {
 
   async validateConnection(): Promise<boolean> {
     try {
-      await this.client.get('/api/tags');
+      const res = await this.client.get('/api/tags');
+      const models = Array.isArray(res?.data?.models) ? res.data.models : [];
+      const names = models.map((m: any) => m?.name).filter((n: any) => typeof n === 'string');
+      if (this.config.model && !names.includes(this.config.model)) {
+        throw new AIServiceError(`モデルが見つかりません: ${this.config.model}. インストール済み: ${names.join(', ') || 'なし'}`, 'local');
+      }
       return true;
-    } catch {
+    } catch (e) {
+      if (e instanceof AIServiceError) {
+        throw e;
+      }
       return false;
     }
   }
@@ -473,6 +481,8 @@ export class LocalLLMService extends AIService {
           top_p: 0.9,
         },
       });
+
+      console.log(response);
 
       const content = response?.data?.response ?? '';
       if (typeof content !== 'string' || content.trim() === '') {
