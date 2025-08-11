@@ -1,3 +1,4 @@
+
 # Mastra AI リバースエンジニアリング用プロンプト集
 
 このドキュメントは、PR Quiz GeneratorアプリケーションをMastra AI（https://github.com/mastra-ai/mastra）で再実装するためのリバースエンジニアリング用プロンプト集です。
