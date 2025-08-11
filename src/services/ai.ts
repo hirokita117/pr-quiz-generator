@@ -347,19 +347,21 @@ export class GoogleAIService extends AIService {
           temperature: 0.7,
           maxOutputTokens: 4000,
         },
-      } as any);
-
-      console.log(response);
+      });
 
       const candidates: unknown = response?.data?.candidates;
       let content = '';
       if (Array.isArray(candidates) && candidates.length > 0) {
         const parts: unknown = candidates[0]?.content?.parts;
         if (Array.isArray(parts)) {
-          content = parts
-            .map((p: any) => (typeof p?.text === 'string' ? p.text : ''))
-            .join('')
-            .trim();
+          let buffer = '';
+          for (const part of parts as Array<unknown>) {
+            if (isRecord(part)) {
+              const text = typeof part.text === 'string' ? part.text : undefined;
+              if (text) buffer += text;
+            }
+          }
+          content = buffer.trim();
         }
       }
 
@@ -436,6 +438,27 @@ ${filesText}
   }
 
   private parseResponse(content: string, questionCount: number): Question[] {
+    const toQuestion = (q: RawQuestionResponse, index: number): Question => {
+      const codeSnippet = q.code && typeof q.code.content === 'string'
+        ? {
+            language: q.code.language ?? 'unknown',
+            content: q.code.content,
+            filename: q.code.filename,
+          }
+        : undefined;
+      return {
+        id: q.id || `question-${index + 1}`,
+        type: q.type || 'multiple-choice',
+        content: q.content,
+        code: codeSnippet,
+        options: q.options || undefined,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+        difficulty: q.difficulty || 'medium',
+        tags: q.tags || [],
+      };
+    };
+
     // JSONレスポンスを抽出（json/jsonc, 大文字小文字, 改行の有無に寛容）
     const fenceRegex = /```(?:jsonc?|JSONC?|json|JSON)?\s*\n?([\s\S]*?)\n?```/;
     const jsonMatch = content.match(fenceRegex);
@@ -447,23 +470,13 @@ ${filesText}
     }
 
     // 最初のパース試行
-    const tryParse = (text: string): any => JSON.parse(text);
+    const tryParse = (text: string): unknown => JSON.parse(text);
 
     try {
-      const parsed = tryParse(jsonContent);
+      const parsed = tryParse(jsonContent) as { questions?: RawQuestionResponse[] };
       const questions = parsed.questions || [];
 
-      return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
-        id: q.id || `question-${index + 1}`,
-        type: q.type || 'multiple-choice',
-        content: q.content,
-        code: q.code || undefined,
-        options: q.options || undefined,
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation,
-        difficulty: q.difficulty || 'medium',
-        tags: q.tags || [],
-      }));
+      return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => toQuestion(q, index));
     } catch (error) {
       // フェンスが多重になっている/末尾の ``` が残るなどのケースに最終フォールバック
       const firstBrace = jsonContent.indexOf('{');
@@ -471,19 +484,9 @@ ${filesText}
       if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
         try {
           const recovered = jsonContent.slice(firstBrace, lastBrace + 1);
-          const parsed = JSON.parse(recovered);
+          const parsed = JSON.parse(recovered) as { questions?: RawQuestionResponse[] };
           const questions = parsed.questions || [];
-          return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
-            id: q.id || `question-${index + 1}`,
-            type: q.type || 'multiple-choice',
-            content: q.content,
-            code: q.code || undefined,
-            options: q.options || undefined,
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation,
-            difficulty: q.difficulty || 'medium',
-            tags: q.tags || [],
-          }));
+          return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => toQuestion(q, index));
         } catch {
           // fallthrough
         }
@@ -518,8 +521,10 @@ export class LocalLLMService extends AIService {
   async validateConnection(): Promise<boolean> {
     try {
       const res = await this.client.get('/api/tags');
-      const models = Array.isArray(res?.data?.models) ? res.data.models : [];
-      const names = models.map((m: any) => m?.name).filter((n: any) => typeof n === 'string');
+      const models: unknown[] = Array.isArray(res?.data?.models) ? res.data.models : [];
+      const names = models
+        .map((model) => (isRecord(model) && typeof model.name === 'string' ? model.name : undefined))
+        .filter((name): name is string => typeof name === 'string');
       if (this.config.model && !names.includes(this.config.model)) {
         throw new AIServiceError(`モデルが見つかりません: ${this.config.model}. インストール済み: ${names.join(', ') || 'なし'}`, 'local');
       }

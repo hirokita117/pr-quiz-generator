@@ -27,7 +27,10 @@ function readLocalStorage(key: string): string | undefined {
       const v = window.localStorage.getItem(key);
       return v ?? undefined;
     }
-  } catch {}
+  } catch (error) {
+    // localStorage の制限やブラウザ設定により失敗する場合がある
+    console.warn('Failed to read from localStorage:', error);
+  }
   return undefined;
 }
 
