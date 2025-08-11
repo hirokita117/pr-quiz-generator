@@ -34,6 +34,9 @@ reviews:
     enabled: true
     # ドラフトPRをレビュー対象とするか
     drafts: false
+    # ベースブランチを指定
+    base_branches:
+      - "main"
 
   # レビュー対象から除外するファイルのパターンを指定します
   path_filters:
