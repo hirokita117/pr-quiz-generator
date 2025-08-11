@@ -160,19 +160,73 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
     }
   };
 
+  const colorMap = {
+    red: {
+      border: 'border-red-200',
+      bg50: 'bg-red-50',
+      bg100: 'bg-red-100',
+      text500: 'text-red-500',
+      text600: 'text-red-600',
+      text700: 'text-red-700',
+      text800: 'text-red-800',
+      hoverText700: 'hover:text-red-700',
+      bg600: 'bg-red-600',
+      hoverBg700: 'hover:bg-red-700',
+    },
+    orange: {
+      border: 'border-orange-200',
+      bg50: 'bg-orange-50',
+      bg100: 'bg-orange-100',
+      text500: 'text-orange-500',
+      text600: 'text-orange-600',
+      text700: 'text-orange-700',
+      text800: 'text-orange-800',
+      hoverText700: 'hover:text-orange-700',
+      bg600: 'bg-orange-600',
+      hoverBg700: 'hover:bg-orange-700',
+    },
+    blue: {
+      border: 'border-blue-200',
+      bg50: 'bg-blue-50',
+      bg100: 'bg-blue-100',
+      text500: 'text-blue-500',
+      text600: 'text-blue-600',
+      text700: 'text-blue-700',
+      text800: 'text-blue-800',
+      hoverText700: 'hover:text-blue-700',
+      bg600: 'bg-blue-600',
+      hoverBg700: 'hover:bg-blue-700',
+    },
+    yellow: {
+      border: 'border-yellow-200',
+      bg50: 'bg-yellow-50',
+      bg100: 'bg-yellow-100',
+      text500: 'text-yellow-500',
+      text600: 'text-yellow-600',
+      text700: 'text-yellow-700',
+      text800: 'text-yellow-800',
+      hoverText700: 'hover:text-yellow-700',
+      bg600: 'bg-yellow-600',
+      hoverBg700: 'hover:bg-yellow-700',
+    },
+  };
+
+  const { color } = config;
+  const colors = colorMap[color as keyof typeof colorMap] || colorMap.red;
+
   return (
-    <Card className={`w-full border-${config.color}-200 bg-${config.color}-50`}>
+    <Card className={`w-full ${colors.border} ${colors.bg50}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-full bg-${config.color}-100`}>
-              <Icon className={`h-5 w-5 text-${config.color}-600`} />
+            <div className={`p-2 rounded-full ${colors.bg100}`}>
+              <Icon className={`h-5 w-5 ${colors.text600}`} />
             </div>
             <div>
-              <CardTitle className={`text-${config.color}-800`}>
+              <CardTitle className={`${colors.text800}`}>
                 {config.title}
               </CardTitle>
-              <CardDescription className={`text-${config.color}-600 mt-1`}>
+              <CardDescription className={`${colors.text600} mt-1`}>
                 {error}
               </CardDescription>
             </div>
@@ -181,7 +235,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleDismiss}
-            className={`text-${config.color}-500 hover:text-${config.color}-700`}
+            className={`${colors.text500} ${colors.hoverText700}`}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -192,12 +246,12 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
         <div className="space-y-4">
           {/* 解決策の提案 */}
           <div>
-            <h4 className={`text-sm font-medium text-${config.color}-800 mb-2`}>
+            <h4 className={`text-sm font-medium ${colors.text800} mb-2`}>
               解決方法:
             </h4>
             <ul className="space-y-1">
               {config.suggestions.map((suggestion, index) => (
-                <li key={index} className={`text-sm text-${config.color}-700 flex items-start gap-2`}>
+                <li key={index} className={`text-sm ${colors.text700} flex items-start gap-2`}>
                   <span className="text-xs mt-1">•</span>
                   <span>{suggestion}</span>
                 </li>
@@ -211,7 +265,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
               variant="default"
               size="sm"
               onClick={handleAction}
-              className={`bg-${config.color}-600 hover:bg-${config.color}-700`}
+              className={`${colors.bg600} ${colors.hoverBg700}`}
             >
               <ActionIcon className="mr-2 h-4 w-4" />
               {config.actionText}
@@ -226,7 +280,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
           </div>
 
           {/* 追加情報 */}
-          <div className={`text-xs text-${config.color}-600 pt-2 border-t border-${config.color}-200`}>
+          <div className={`text-xs ${colors.text600} pt-2 border-t ${colors.border}`}>
             問題が解決しない場合は、ブラウザのコンソールでエラーの詳細を確認してください。
           </div>
         </div>
