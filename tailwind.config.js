@@ -11,6 +11,9 @@ export default {
         6: "var(--space-6)",
         16: "var(--space-16)",
       },
+      borderColor: {
+        DEFAULT: "hsl(var(--border))",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
