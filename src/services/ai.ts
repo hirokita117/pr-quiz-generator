@@ -340,19 +340,33 @@ export class GoogleAIService extends AIService {
     try {
       const response = await this.client.post(`/models/${this.model}:generateContent`, {
         contents: [{
-          parts: [{
-            text: prompt
-          }]
+          role: 'user',
+          parts: [{ text: prompt }]
         }],
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 4000,
         },
-      });
+      } as any);
 
-      const content = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      console.log(response);
+
+      const candidates: unknown = response?.data?.candidates;
+      let content = '';
+      if (Array.isArray(candidates) && candidates.length > 0) {
+        const parts: unknown = candidates[0]?.content?.parts;
+        if (Array.isArray(parts)) {
+          content = parts
+            .map((p: any) => (typeof p?.text === 'string' ? p.text : ''))
+            .join('')
+            .trim();
+        }
+      }
+
       if (typeof content !== 'string' || content.trim() === '') {
-        throw new AIServiceError('Google AI returned empty content', 'google', response?.data);
+        const finishReason = Array.isArray(candidates) ? candidates[0]?.finishReason : undefined;
+        const promptFeedback = response?.data?.promptFeedback;
+        throw new AIServiceError('Google AI returned empty content', 'google', { finishReason, promptFeedback, raw: response?.data });
       }
       return this.parseResponse(content, context.questionCount);
     } catch (unknownError) {
@@ -401,16 +415,42 @@ ${filesText}
 - 難易度: ${difficulty}
 - 重点領域: ${focusAreaText}
 
-上記のプルリクエストの内容を分析して、指定された数のクイズを生成してください。各問題は変更内容に関連し、プログラミングスキルの理解度を測定できるものにしてください。`;
+上記のプルリクエストの内容を分析して、指定された数のクイズを生成してください。各問題は変更内容に関連し、プログラミングスキルの理解度を測定できるものにしてください。
+
+出力は必ず JSON のみで返してください。前後に説明文やコードフェンスは付けず、トップレベルは次のスキーマに従ってください：
+{
+  "questions": [
+    {
+      "id": "string",
+      "type": "multiple-choice|true-false|code-review|explanation",
+      "content": "問題文",
+      "code": { "language": "string", "content": "string", "filename": "string(任意)" },
+      "options": [ { "id": "string", "text": "string", "isCorrect": boolean } ],
+      "correctAnswer": "string | string[]",
+      "explanation": "string",
+      "difficulty": "easy|medium|hard",
+      "tags": ["string"]
+    }
+  ]
+}`;
   }
 
   private parseResponse(content: string, questionCount: number): Question[] {
-    // JSONレスポンスを抽出
-    const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/```\n([\s\S]*?)\n```/);
-    const jsonContent = jsonMatch ? jsonMatch[1] : content;
+    // JSONレスポンスを抽出（json/jsonc, 大文字小文字, 改行の有無に寛容）
+    const fenceRegex = /```(?:jsonc?|JSONC?|json|JSON)?\s*\n?([\s\S]*?)\n?```/;
+    const jsonMatch = content.match(fenceRegex);
+    let jsonContent = (jsonMatch ? jsonMatch[1] : content).trim();
+
+    // まれに先頭の波括弧が省かれるケースに対処
+    if (!jsonContent.startsWith('{') && /(^|\n)\s*"?questions"?\s*:\s*\[/i.test(jsonContent)) {
+      jsonContent = `{${jsonContent}}`;
+    }
+
+    // 最初のパース試行
+    const tryParse = (text: string): any => JSON.parse(text);
 
     try {
-      const parsed = JSON.parse(jsonContent);
+      const parsed = tryParse(jsonContent);
       const questions = parsed.questions || [];
 
       return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
@@ -425,7 +465,30 @@ ${filesText}
         tags: q.tags || [],
       }));
     } catch (error) {
-      throw new AIServiceError('Failed to parse Google AI response', 'google', { content, error });
+      // フェンスが多重になっている/末尾の ``` が残るなどのケースに最終フォールバック
+      const firstBrace = jsonContent.indexOf('{');
+      const lastBrace = jsonContent.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        try {
+          const recovered = jsonContent.slice(firstBrace, lastBrace + 1);
+          const parsed = JSON.parse(recovered);
+          const questions = parsed.questions || [];
+          return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
+            id: q.id || `question-${index + 1}`,
+            type: q.type || 'multiple-choice',
+            content: q.content,
+            code: q.code || undefined,
+            options: q.options || undefined,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation,
+            difficulty: q.difficulty || 'medium',
+            tags: q.tags || [],
+          }));
+        } catch {
+          // fallthrough
+        }
+      }
+      throw new AIServiceError('Failed to parse Google AI response', 'google', { content, extracted: jsonContent, error });
     }
   }
 }
