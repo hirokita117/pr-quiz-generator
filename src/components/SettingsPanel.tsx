@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useQuizStore } from '@/store/useQuizStore';
-import { Settings, Save, Eye, EyeOff } from 'lucide-react';
-import type { AIProvider } from '@/types';
+import { Settings, Save, Eye, EyeOff, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import type { AIProvider, QuizConfig } from '@/types';
+import { AIServiceFactory } from '@/services/ai';
 
 export const SettingsPanel: React.FC = () => {
   const { config, updateConfig } = useQuizStore();
@@ -14,6 +15,9 @@ export const SettingsPanel: React.FC = () => {
   const [googleKey, setGoogleKey] = useState(config.apiKeys?.google || '');
   const [localEndpoint, setLocalEndpoint] = useState(config.localLLM?.endpoint || 'http://localhost:11434');
   const [showKeys, setShowKeys] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testStatus, setTestStatus] = useState<null | 'success' | 'error'>(null);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
   
   // 設定をローカルストレージから読み込み
   useEffect(() => {
@@ -63,6 +67,47 @@ export const SettingsPanel: React.FC = () => {
     alert('設定が保存されました');
   };
 
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestStatus(null);
+    setTestMessage(null);
+
+    try {
+      // 入力中の値を優先して、一時的な設定を組み立て
+      const testConfig: QuizConfig = {
+        ...config,
+        aiProvider: config.aiProvider,
+        apiKeys: {
+          openai: openaiKey,
+          google: googleKey,
+        },
+        localLLM: config.aiProvider === 'local'
+          ? {
+              endpoint: localEndpoint,
+              model: config.localLLM?.model || 'llama2',
+              apiKey: config.localLLM?.apiKey,
+            }
+          : config.localLLM,
+      };
+
+      const service = AIServiceFactory.create(testConfig);
+      const ok = await service.validateConnection();
+      if (ok) {
+        setTestStatus('success');
+        setTestMessage('認証と接続に成功しました。');
+      } else {
+        setTestStatus('error');
+        setTestMessage('接続に失敗しました。APIキーやエンドポイント設定を確認してください。');
+      }
+    } catch (e) {
+      setTestStatus('error');
+      const message = e instanceof Error ? e.message : '不明なエラーが発生しました';
+      setTestMessage(message);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
 
   return (
     <Card className="w-full h-fit">
@@ -94,7 +139,7 @@ export const SettingsPanel: React.FC = () => {
           </Select>
         </div>
 
-        {/* OpenAI APIキー */}
+        {/* OpenAI / Google APIキー */}
         {(config.aiProvider === 'openai' || config.aiProvider === 'google') && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -131,6 +176,34 @@ export const SettingsPanel: React.FC = () => {
                 />
               </div>
             )}
+
+            {/* 接続テスト */}
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestConnection}
+                disabled={isTesting}
+              >
+                接続をテスト
+              </Button>
+              {isTesting && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              {testStatus === 'success' && (
+                <div className="flex items-center gap-1 text-green-600 text-sm">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>✅ 接続成功</span>
+                </div>
+              )}
+              {testStatus === 'error' && (
+                <div className="flex items-center gap-1 text-destructive text-sm">
+                  <XCircle className="h-4 w-4" />
+                  <span>❌ 接続に失敗</span>
+                </div>
+              )}
+            </div>
+            {testMessage && (
+              <p className="text-xs text-muted-foreground">{testMessage}</p>
+            )}
           </div>
         )}
 
@@ -147,6 +220,34 @@ export const SettingsPanel: React.FC = () => {
             <p className="text-xs text-muted-foreground">
               Ollamaサーバーのエンドポイントを指定してください
             </p>
+
+            {/* 接続テスト（ローカル） */}
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestConnection}
+                disabled={isTesting}
+              >
+                接続をテスト
+              </Button>
+              {isTesting && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              {testStatus === 'success' && (
+                <div className="flex items-center gap-1 text-green-600 text-sm">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>✅ 接続成功</span>
+                </div>
+              )}
+              {testStatus === 'error' && (
+                <div className="flex items-center gap-1 text-destructive text-sm">
+                  <XCircle className="h-4 w-4" />
+                  <span>❌ 接続に失敗</span>
+                </div>
+              )}
+            </div>
+            {testMessage && (
+              <p className="text-xs text-muted-foreground">{testMessage}</p>
+            )}
           </div>
         )}
 
