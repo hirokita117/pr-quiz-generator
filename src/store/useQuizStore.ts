@@ -33,6 +33,7 @@ function readLocalStorage(key: string): string | undefined {
 
 const savedOpenaiKey = readLocalStorage('pr-quiz-openai-key');
 const savedGoogleKey = readLocalStorage('pr-quiz-google-key');
+const savedGoogleModel = readLocalStorage('pr-quiz-google-model');
 const savedLocalEndpoint = readLocalStorage('pr-quiz-local-endpoint');
 const savedLocalModel = readLocalStorage('pr-quiz-local-model');
 
@@ -40,6 +41,7 @@ const initialConfig: QuizConfig = {
   aiProvider: env.app.defaultAIProvider as AIProvider,
   questionCount: env.app.defaultQuestionCount,
   difficulty: env.app.defaultDifficulty as 'easy' | 'medium' | 'hard' | 'mixed',
+  googleModel: savedGoogleModel || env.google.model,
   apiKeys: {
     ...(savedOpenaiKey ? { openai: savedOpenaiKey } : {}),
     ...(savedGoogleKey ? { google: savedGoogleKey } : {}),

@@ -13,6 +13,7 @@ export const SettingsPanel: React.FC = () => {
   
   const [openaiKey, setOpenaiKey] = useState(config.apiKeys?.openai || '');
   const [googleKey, setGoogleKey] = useState(config.apiKeys?.google || '');
+  const [googleModel, setGoogleModel] = useState(config.googleModel || 'gemini-pro');
   const [localEndpoint, setLocalEndpoint] = useState(config.localLLM?.endpoint || 'http://localhost:11434');
   const [localModel, setLocalModel] = useState(config.localLLM?.model || 'llama2');
   const [showKeys, setShowKeys] = useState(false);
@@ -24,11 +25,13 @@ export const SettingsPanel: React.FC = () => {
   useEffect(() => {
     const savedOpenaiKey = localStorage.getItem('pr-quiz-openai-key') || '';
     const savedGoogleKey = localStorage.getItem('pr-quiz-google-key') || '';
+    const savedGoogleModel = localStorage.getItem('pr-quiz-google-model') || 'gemini-pro';
     const savedLocalEndpoint = localStorage.getItem('pr-quiz-local-endpoint') || 'http://localhost:11434';
     const savedLocalModel = localStorage.getItem('pr-quiz-local-model') || 'llama2';
     
     setOpenaiKey(savedOpenaiKey);
     setGoogleKey(savedGoogleKey);
+    setGoogleModel(savedGoogleModel);
     setLocalEndpoint(savedLocalEndpoint);
     setLocalModel(savedLocalModel);
     
@@ -38,6 +41,7 @@ export const SettingsPanel: React.FC = () => {
         openai: savedOpenaiKey,
         google: savedGoogleKey,
       },
+      googleModel: savedGoogleModel,
       localLLM: {
         endpoint: savedLocalEndpoint,
         model: savedLocalModel,
@@ -53,6 +57,7 @@ export const SettingsPanel: React.FC = () => {
     // ローカルストレージに保存
     localStorage.setItem('pr-quiz-openai-key', openaiKey);
     localStorage.setItem('pr-quiz-google-key', googleKey);
+    localStorage.setItem('pr-quiz-google-model', googleModel);
     localStorage.setItem('pr-quiz-local-endpoint', localEndpoint);
     localStorage.setItem('pr-quiz-local-model', localModel);
     
@@ -62,6 +67,7 @@ export const SettingsPanel: React.FC = () => {
         openai: openaiKey,
         google: googleKey,
       },
+      googleModel,
       localLLM: {
         endpoint: localEndpoint,
         model: localModel,
@@ -94,7 +100,10 @@ export const SettingsPanel: React.FC = () => {
           : config.localLLM,
       };
 
-      const service = AIServiceFactory.create(testConfig);
+      const service = AIServiceFactory.create({
+        ...testConfig,
+        googleModel: googleModel || config.googleModel || 'gemini-pro',
+      });
       const ok = await service.validateConnection();
       if (ok) {
         setTestStatus('success');
@@ -178,6 +187,26 @@ export const SettingsPanel: React.FC = () => {
                   value={googleKey}
                   onChange={(e) => setGoogleKey(e.target.value)}
                 />
+                <div className="space-y-2 pt-2">
+                  <label className="text-xs text-muted-foreground">Gemini モデル</label>
+                  <Select
+                    value={googleModel}
+                    onValueChange={(value) => {
+                      setGoogleModel(value);
+                      updateConfig({ googleModel: value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</SelectItem>
+                      <SelectItem value="gemini-2.5-flash">gemini-2.5-flash</SelectItem>
+                      <SelectItem value="gemini-2.5-pro">gemini-2.5-pro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">使用する Gemini モデルを選択してください。</p>
+                </div>
               </div>
             )}
 

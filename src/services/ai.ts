@@ -307,8 +307,9 @@ ${filesText}
 // Google AI サービス実装
 export class GoogleAIService extends AIService {
   private client: AxiosInstance;
+  private model: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model?: string) {
     super();
     this.client = axios.create({
       baseURL: env.google.apiUrl,
@@ -317,6 +318,7 @@ export class GoogleAIService extends AIService {
       },
       timeout: 60000,
     });
+    this.model = model || env.google.model || 'gemini-pro';
   }
 
   getName(): string {
@@ -336,7 +338,7 @@ export class GoogleAIService extends AIService {
     const prompt = this.buildPrompt(context);
     
     try {
-      const response = await this.client.post('/models/gemini-pro:generateContent', {
+      const response = await this.client.post(`/models/${this.model}:generateContent`, {
         contents: [{
           parts: [{
             text: prompt
@@ -571,10 +573,13 @@ export class AIServiceFactory {
         return new OpenAIService(config.apiKeys.openai);
 
       case 'google':
-        if (!config.apiKeys?.google) {
-          throw new AIServiceError('Google API key is required', 'google');
+        {
+          const apiKey = config.apiKeys?.google || env.google.apiKey;
+          if (!apiKey) {
+            throw new AIServiceError('Google API key is required', 'google');
+          }
+          return new GoogleAIService(apiKey, config.googleModel);
         }
-        return new GoogleAIService(config.apiKeys.google);
 
       case 'local':
         if (!config.localLLM) {
