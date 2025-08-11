@@ -87,10 +87,10 @@ export const QuizDisplay: React.FC = () => {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'text-green-600 bg-green-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'hard': return 'text-red-600 bg-red-100';
-      default: return 'text-blue-600 bg-blue-100';
+      case 'easy': return 'text-foreground bg-muted';
+      case 'medium': return 'text-foreground bg-muted';
+      case 'hard': return 'text-foreground bg-muted';
+      default: return 'text-foreground bg-muted';
     }
   };
 
@@ -122,9 +122,9 @@ export const QuizDisplay: React.FC = () => {
             {showResults && (
               <div className="flex-shrink-0">
                 {isCorrect ? (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <CheckCircle className="h-5 w-5 text-primary" />
                 ) : (
-                  <XCircle className="h-5 w-5 text-red-500" />
+                  <XCircle className="h-5 w-5 text-destructive" />
                 )}
               </div>
             )}
@@ -134,12 +134,12 @@ export const QuizDisplay: React.FC = () => {
           <div className="space-y-4">
             {/* コードスニペット */}
             {question.code && (
-              <div className="bg-gray-50 p-4 rounded-lg border">
+              <div className="bg-muted p-4 rounded-lg border border-border">
                 <pre className="text-sm overflow-x-auto">
                   <code>{question.code.content}</code>
                 </pre>
                 {question.code.language && (
-                  <p className="text-xs text-gray-500 mt-2">言語: {question.code.language}</p>
+                  <p className="text-xs text-muted-foreground mt-2">言語: {question.code.language}</p>
                 )}
               </div>
             )}
@@ -159,9 +159,9 @@ export const QuizDisplay: React.FC = () => {
                     <label
                       key={index}
                       className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-colors
-                        ${isUserSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}
-                        ${showResults && isCorrectAnswer ? 'border-green-500 bg-green-50' : ''}
-                        ${showResults && isUserSelected && !isCorrectAnswer ? 'border-red-500 bg-red-50' : ''}
+                        ${isUserSelected ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}
+                        ${showResults && isCorrectAnswer ? 'border-primary bg-primary/10' : ''}
+                        ${showResults && isUserSelected && !isCorrectAnswer ? 'border-destructive bg-destructive/10' : ''}
                       `}
                     >
                       <input
@@ -173,8 +173,8 @@ export const QuizDisplay: React.FC = () => {
                         disabled={showResults}
                         className="sr-only"
                       />
-                      <div className={`w-4 h-4 border-2 rounded-full ${isUserSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
-                        {isUserSelected && <div className="w-full h-full bg-white rounded-full scale-50"></div>}
+                      <div className={`w-4 h-4 border-2 rounded-full ${isUserSelected ? 'bg-primary border-primary' : 'border-input'}`}>
+                        {isUserSelected && <div className="w-full h-full bg-background rounded-full scale-50"></div>}
                       </div>
                       <span className="text-sm">{option.text}</span>
                     </label>
@@ -185,15 +185,15 @@ export const QuizDisplay: React.FC = () => {
 
             {/* 解説（結果表示時のみ） */}
             {showResults && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h5 className="font-medium text-blue-900 mb-2">解説:</h5>
-                <p className="text-sm text-blue-800">{question.explanation}</p>
+              <div className="mt-4 p-4 bg-muted border border-border rounded-lg">
+                <h5 className="font-medium text-foreground mb-2">解説:</h5>
+                <p className="text-sm text-muted-foreground">{question.explanation}</p>
                 
                 {/* 部分点の詳細表示 */}
                 {Array.isArray(question.correctAnswer) && (
-                  <div className="mt-3 p-3 bg-white border border-blue-200 rounded">
-                    <h6 className="font-medium text-blue-900 mb-2 text-sm">部分点の計算:</h6>
-                    <div className="space-y-1 text-xs text-blue-800">
+                  <div className="mt-3 p-3 bg-card border border-border rounded">
+                    <h6 className="font-medium text-foreground mb-2 text-sm">部分点の計算:</h6>
+                    <div className="space-y-1 text-xs text-muted-foreground">
                       <div>正解選択: {userAnswers.filter(a => question.correctAnswer.includes(a)).length} / {question.correctAnswer.length}</div>
                       <div>不正解選択: {userAnswers.filter(a => !question.correctAnswer.includes(a)).length}</div>
                       <div>最終スコア: {Math.max(0, userAnswers.filter(a => question.correctAnswer.includes(a)).length - userAnswers.filter(a => !question.correctAnswer.includes(a)).length)} / {question.correctAnswer.length}</div>
@@ -204,7 +204,7 @@ export const QuizDisplay: React.FC = () => {
                 {question.tags && question.tags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {question.tags.map((tag, index) => (
-                      <span key={index} className="px-2 py-1 bg-blue-200 text-blue-800 text-xs rounded">
+                      <span key={index} className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded">
                         {tag}
                       </span>
                     ))}
@@ -232,7 +232,7 @@ export const QuizDisplay: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Brain className="h-4 w-4" />
               {totalQuestions}問
@@ -256,13 +256,13 @@ export const QuizDisplay: React.FC = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-2">
-              <div className="text-3xl font-bold text-blue-600">
+              <div className="text-3xl font-bold text-primary">
                 {score} / {maxScore}
               </div>
-              <div className="text-lg text-gray-600">
+              <div className="text-lg text-muted-foreground">
                 正答率: {scorePercentage}%
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-muted-foreground">
                 {scorePercentage >= 80 ? '素晴らしい!' : 
                  scorePercentage >= 60 ? 'よくできました!' : 
                  '復習が必要かもしれません'}

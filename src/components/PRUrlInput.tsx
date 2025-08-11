@@ -50,10 +50,10 @@ export const PRUrlInput: React.FC = () => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               disabled={isLoading}
-              className={!isUrlValid ? "border-red-500" : ""}
+              className={!isUrlValid ? "border-destructive" : ""}
             />
             {!isUrlValid && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-destructive">
                 有効なGitHub プルリクエストのURLを入力してください
               </p>
             )}

@@ -33,8 +33,8 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     return (
       <Card className="w-full">
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-4" />
-          <p className="text-gray-600 text-center">{message}</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground text-center">{message}</p>
         </CardContent>
       </Card>
     );
@@ -46,9 +46,9 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         <div className="flex flex-col items-center space-y-8">
           {/* メインスピナー */}
           <div className="relative">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 bg-blue-100 rounded-full"></div>
+              <div className="w-8 h-8 bg-primary/10 rounded-full"></div>
             </div>
           </div>
 
@@ -64,19 +64,19 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
                   key={index}
                   className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-500 ${
                     isActive
-                      ? 'bg-blue-50 border-l-4 border-blue-500'
+                      ? 'bg-primary/10 border-l-4 border-primary'
                       : isCompleted
-                      ? 'bg-green-50 border-l-4 border-green-500'
-                      : 'bg-gray-50 border-l-4 border-gray-200'
+                      ? 'bg-accent border-l-4 border-accent-foreground'
+                      : 'bg-muted border-l-4 border-border'
                   }`}
                 >
                   <div
                     className={`p-2 rounded-full ${
                       isActive
-                        ? 'bg-blue-100 text-blue-600'
+                        ? 'bg-primary/10 text-primary'
                         : isCompleted
-                        ? 'bg-green-100 text-green-600'
-                        : 'bg-gray-100 text-gray-400'
+                        ? 'bg-accent text-accent-foreground'
+                        : 'bg-muted text-muted-foreground'
                     }`}
                   >
                     <Icon className={`h-4 w-4 ${isActive ? 'animate-pulse' : ''}`} />
@@ -84,10 +84,10 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
                   <span
                     className={`text-sm font-medium ${
                       isActive
-                        ? 'text-blue-700'
+                        ? 'text-foreground'
                         : isCompleted
-                        ? 'text-green-700'
-                        : 'text-gray-500'
+                        ? 'text-foreground'
+                        : 'text-muted-foreground'
                     }`}
                   >
                     {step.text}
@@ -95,9 +95,9 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
                   {isActive && (
                     <div className="ml-auto">
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   )}
@@ -108,23 +108,23 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
           {/* 進行状況バー */}
           <div className="w-full max-w-md">
-            <div className="bg-gray-200 rounded-full h-2">
+            <div className="bg-muted rounded-full h-2">
               <div
-                className="bg-blue-500 h-2 rounded-full transition-all duration-1000 ease-out"
+                className="bg-primary h-2 rounded-full transition-all duration-1000 ease-out"
                 style={{
                   width: `${((currentStep + 1) / steps.length) * 100}%`,
                 }}
               ></div>
             </div>
-            <p className="text-center text-sm text-gray-600 mt-2">
+            <p className="text-center text-sm text-muted-foreground mt-2">
               ステップ {currentStep + 1} / {steps.length}
             </p>
           </div>
 
           {/* ヒントメッセージ */}
           <div className="text-center space-y-2">
-            <p className="text-gray-600">{message}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-muted-foreground">{message}</p>
+            <p className="text-xs text-muted-foreground">
               大きなプルリクエストの場合、数分かかることがあります
             </p>
           </div>
