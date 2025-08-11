@@ -9,9 +9,14 @@ import { ErrorMessage } from '@/components/ErrorMessage';
 function App() {
   const { isLoading, error, currentQuiz, generateQuiz, pullRequestUrl } = useQuizStore();
 
-  const handleRetry = () => {
+  const handleRetry = async () => {
     if (pullRequestUrl) {
-      generateQuiz(pullRequestUrl);
+      try {
+        await generateQuiz(pullRequestUrl);
+      } catch (error) {
+        console.error('リトライ処理中にエラーが発生しました:', error);
+        // エラー通知はuseQuizStore内のgenerateQuizが担当するため、ここではロギングのみ
+      }
     }
   };
 
