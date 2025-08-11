@@ -63,10 +63,6 @@ export const SettingsPanel: React.FC = () => {
     alert('設定が保存されました');
   };
 
-  const maskKey = (key: string) => {
-    if (!key || key.length < 8) return key;
-    return key.substring(0, 4) + '•'.repeat(key.length - 8) + key.substring(key.length - 4);
-  };
 
   return (
     <Card className="w-full h-fit">
@@ -118,7 +114,7 @@ export const SettingsPanel: React.FC = () => {
                 <Input
                   type={showKeys ? "text" : "password"}
                   placeholder="sk-..."
-                  value={showKeys ? openaiKey : maskKey(openaiKey)}
+                  value={openaiKey}
                   onChange={(e) => setOpenaiKey(e.target.value)}
                 />
               </div>
@@ -130,7 +126,7 @@ export const SettingsPanel: React.FC = () => {
                 <Input
                   type={showKeys ? "text" : "password"}
                   placeholder="AIza..."
-                  value={showKeys ? googleKey : maskKey(googleKey)}
+                  value={googleKey}
                   onChange={(e) => setGoogleKey(e.target.value)}
                 />
               </div>

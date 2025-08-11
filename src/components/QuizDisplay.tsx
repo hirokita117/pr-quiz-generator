@@ -18,40 +18,72 @@ import type { Question } from '@/types';
 
 export const QuizDisplay: React.FC = () => {
   const { currentQuiz } = useQuizStore();
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
   const [showResults, setShowResults] = useState(false);
 
   if (!currentQuiz) {
     return null;
   }
 
-  const handleAnswerSelect = (questionId: string, answer: string) => {
-    setSelectedAnswers(prev => ({
-      ...prev,
-      [questionId]: answer
-    }));
+  const handleAnswerSelect = (questionId: string, answer: string, isMultipleChoice: boolean = false) => {
+    setSelectedAnswers(prev => {
+      const currentAnswers = prev[questionId] || [];
+      
+      if (isMultipleChoice) {
+        // 複数選択肢の場合：選択済みなら削除、未選択なら追加
+        if (currentAnswers.includes(answer)) {
+          return {
+            ...prev,
+            [questionId]: currentAnswers.filter(a => a !== answer)
+          };
+        } else {
+          return {
+            ...prev,
+            [questionId]: [...currentAnswers, answer]
+          };
+        }
+      } else {
+        // 単一選択肢の場合：置き換え
+        return {
+          ...prev,
+          [questionId]: [answer]
+        };
+      }
+    });
   };
 
   const calculateScore = () => {
-    let correct = 0;
+    let totalScore = 0;
+    let maxPossibleScore = 0;
+    
     currentQuiz.questions.forEach(question => {
-      const userAnswer = selectedAnswers[question.id];
+      const userAnswers = selectedAnswers[question.id] || [];
+      
       if (Array.isArray(question.correctAnswer)) {
-        if (question.correctAnswer.includes(userAnswer)) {
-          correct++;
-        }
+        // 複数正解がある問題の場合
+        const correctAnswers = question.correctAnswer;
+        const userCorrectAnswers = userAnswers.filter(answer => correctAnswers.includes(answer));
+        const userIncorrectAnswers = userAnswers.filter(answer => !correctAnswers.includes(answer));
+        
+        // 部分点計算：正解数 - 不正解数（負の点数は0点）
+        const questionScore = Math.max(0, userCorrectAnswers.length - userIncorrectAnswers.length);
+        totalScore += questionScore;
+        maxPossibleScore += correctAnswers.length;
       } else {
-        if (userAnswer === question.correctAnswer) {
-          correct++;
+        // 単一正解の問題の場合
+        if (userAnswers.length === 1 && userAnswers[0] === question.correctAnswer) {
+          totalScore += 1;
         }
+        maxPossibleScore += 1;
       }
     });
-    return correct;
+    
+    return { score: totalScore, maxScore: maxPossibleScore };
   };
 
-  const score = calculateScore();
+  const { score, maxScore } = calculateScore();
   const totalQuestions = currentQuiz.questions.length;
-  const scorePercentage = Math.round((score / totalQuestions) * 100);
+  const scorePercentage = Math.round((score / maxScore) * 100);
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -71,10 +103,10 @@ export const QuizDisplay: React.FC = () => {
   };
 
   const renderQuestion = (question: Question) => {
-    const userAnswer = selectedAnswers[question.id];
+    const userAnswers = selectedAnswers[question.id] || [];
     const isCorrect = Array.isArray(question.correctAnswer) 
-      ? question.correctAnswer.includes(userAnswer)
-      : userAnswer === question.correctAnswer;
+      ? userAnswers.every(answer => question.correctAnswer.includes(answer))
+      : userAnswers.length === 1 && userAnswers[0] === question.correctAnswer;
 
     return (
       <AccordionItem key={question.id} value={question.id}>
@@ -116,30 +148,38 @@ export const QuizDisplay: React.FC = () => {
             {question.options && (
               <div className="space-y-2">
                 <p className="font-medium text-sm">選択肢:</p>
-                {question.options.map((option, index) => (
-                  <label
-                    key={index}
-                    className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-colors
-                      ${userAnswer === option.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}
-                      ${showResults && option.id === question.correctAnswer ? 'border-green-500 bg-green-50' : ''}
-                      ${showResults && userAnswer === option.id && userAnswer !== question.correctAnswer ? 'border-red-500 bg-red-50' : ''}
-                    `}
-                  >
-                    <input
-                      type="radio"
-                      name={question.id}
-                      value={option.id}
-                      checked={userAnswer === option.id}
-                      onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
-                      disabled={showResults}
-                      className="sr-only"
-                    />
-                    <div className={`w-4 h-4 border-2 rounded-full ${userAnswer === option.id ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
-                      {userAnswer === option.id && <div className="w-full h-full bg-white rounded-full scale-50"></div>}
-                    </div>
-                    <span className="text-sm">{option.text}</span>
-                  </label>
-                ))}
+                {question.options.map((option, index) => {
+                  const isMultipleChoice = Array.isArray(question.correctAnswer);
+                  const isCorrectAnswer = isMultipleChoice 
+                    ? question.correctAnswer.includes(option.id)
+                    : question.correctAnswer === option.id;
+                  const isUserSelected = userAnswers.includes(option.id);
+                  
+                  return (
+                    <label
+                      key={index}
+                      className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-colors
+                        ${isUserSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}
+                        ${showResults && isCorrectAnswer ? 'border-green-500 bg-green-50' : ''}
+                        ${showResults && isUserSelected && !isCorrectAnswer ? 'border-red-500 bg-red-50' : ''}
+                      `}
+                    >
+                      <input
+                        type={isMultipleChoice ? "checkbox" : "radio"}
+                        name={question.id}
+                        value={option.id}
+                        checked={isUserSelected}
+                        onChange={() => handleAnswerSelect(question.id, option.id, isMultipleChoice)}
+                        disabled={showResults}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 border-2 rounded-full ${isUserSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                        {isUserSelected && <div className="w-full h-full bg-white rounded-full scale-50"></div>}
+                      </div>
+                      <span className="text-sm">{option.text}</span>
+                    </label>
+                  );
+                })}
               </div>
             )}
 
@@ -148,6 +188,19 @@ export const QuizDisplay: React.FC = () => {
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h5 className="font-medium text-blue-900 mb-2">解説:</h5>
                 <p className="text-sm text-blue-800">{question.explanation}</p>
+                
+                {/* 部分点の詳細表示 */}
+                {Array.isArray(question.correctAnswer) && (
+                  <div className="mt-3 p-3 bg-white border border-blue-200 rounded">
+                    <h6 className="font-medium text-blue-900 mb-2 text-sm">部分点の計算:</h6>
+                    <div className="space-y-1 text-xs text-blue-800">
+                      <div>正解選択: {userAnswers.filter(a => question.correctAnswer.includes(a)).length} / {question.correctAnswer.length}</div>
+                      <div>不正解選択: {userAnswers.filter(a => !question.correctAnswer.includes(a)).length}</div>
+                      <div>最終スコア: {Math.max(0, userAnswers.filter(a => question.correctAnswer.includes(a)).length - userAnswers.filter(a => !question.correctAnswer.includes(a)).length)} / {question.correctAnswer.length}</div>
+                    </div>
+                  </div>
+                )}
+                
                 {question.tags && question.tags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {question.tags.map((tag, index) => (
@@ -204,7 +257,7 @@ export const QuizDisplay: React.FC = () => {
           <CardContent className="pt-6">
             <div className="text-center space-y-2">
               <div className="text-3xl font-bold text-blue-600">
-                {score} / {totalQuestions}
+                {score} / {maxScore}
               </div>
               <div className="text-lg text-gray-600">
                 正答率: {scorePercentage}%
