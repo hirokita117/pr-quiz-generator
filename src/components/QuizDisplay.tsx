@@ -120,24 +120,24 @@ export const QuizDisplay: React.FC = () => {
                   <label
                     key={index}
                     className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-colors
-                      ${userAnswer === option.value ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}
-                      ${showResults && option.value === question.correctAnswer ? 'border-green-500 bg-green-50' : ''}
-                      ${showResults && userAnswer === option.value && userAnswer !== question.correctAnswer ? 'border-red-500 bg-red-50' : ''}
+                      ${userAnswer === option.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}
+                      ${showResults && option.id === question.correctAnswer ? 'border-green-500 bg-green-50' : ''}
+                      ${showResults && userAnswer === option.id && userAnswer !== question.correctAnswer ? 'border-red-500 bg-red-50' : ''}
                     `}
                   >
                     <input
                       type="radio"
                       name={question.id}
-                      value={option.value}
-                      checked={userAnswer === option.value}
+                      value={option.id}
+                      checked={userAnswer === option.id}
                       onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
                       disabled={showResults}
                       className="sr-only"
                     />
-                    <div className={`w-4 h-4 border-2 rounded-full ${userAnswer === option.value ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
-                      {userAnswer === option.value && <div className="w-full h-full bg-white rounded-full scale-50"></div>}
+                    <div className={`w-4 h-4 border-2 rounded-full ${userAnswer === option.id ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                      {userAnswer === option.id && <div className="w-full h-full bg-white rounded-full scale-50"></div>}
                     </div>
-                    <span className="text-sm">{option.label}</span>
+                    <span className="text-sm">{option.text}</span>
                   </label>
                 ))}
               </div>
