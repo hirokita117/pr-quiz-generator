@@ -98,6 +98,8 @@ export interface QuizConfig {
   questionCount?: number;
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
   focusAreas?: FocusArea[];
+  // Google(Gemini) 用のモデル指定（例: gemini-1.5-pro, gemini-1.5-flash, gemini-pro）
+  googleModel?: string;
 }
 
 export type AIProvider = 'openai' | 'google' | 'local';

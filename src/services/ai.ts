@@ -307,8 +307,9 @@ ${filesText}
 // Google AI サービス実装
 export class GoogleAIService extends AIService {
   private client: AxiosInstance;
+  private model: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model?: string) {
     super();
     this.client = axios.create({
       baseURL: env.google.apiUrl,
@@ -317,6 +318,7 @@ export class GoogleAIService extends AIService {
       },
       timeout: 60000,
     });
+    this.model = model || env.google.model || 'gemini-pro';
   }
 
   getName(): string {
@@ -336,11 +338,10 @@ export class GoogleAIService extends AIService {
     const prompt = this.buildPrompt(context);
     
     try {
-      const response = await this.client.post('/models/gemini-pro:generateContent', {
+      const response = await this.client.post(`/models/${this.model}:generateContent`, {
         contents: [{
-          parts: [{
-            text: prompt
-          }]
+          role: 'user',
+          parts: [{ text: prompt }]
         }],
         generationConfig: {
           temperature: 0.7,
@@ -348,9 +349,26 @@ export class GoogleAIService extends AIService {
         },
       });
 
-      const content = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      const candidates: unknown = response?.data?.candidates;
+      let content = '';
+      if (Array.isArray(candidates) && candidates.length > 0) {
+        const parts: unknown = candidates[0]?.content?.parts;
+        if (Array.isArray(parts)) {
+          let buffer = '';
+          for (const part of parts as Array<unknown>) {
+            if (isRecord(part)) {
+              const text = typeof part.text === 'string' ? part.text : undefined;
+              if (text) buffer += text;
+            }
+          }
+          content = buffer.trim();
+        }
+      }
+
       if (typeof content !== 'string' || content.trim() === '') {
-        throw new AIServiceError('Google AI returned empty content', 'google', response?.data);
+        const finishReason = Array.isArray(candidates) ? candidates[0]?.finishReason : undefined;
+        const promptFeedback = response?.data?.promptFeedback;
+        throw new AIServiceError('Google AI returned empty content', 'google', { finishReason, promptFeedback, raw: response?.data });
       }
       return this.parseResponse(content, context.questionCount);
     } catch (unknownError) {
@@ -399,31 +417,81 @@ ${filesText}
 - 難易度: ${difficulty}
 - 重点領域: ${focusAreaText}
 
-上記のプルリクエストの内容を分析して、指定された数のクイズを生成してください。各問題は変更内容に関連し、プログラミングスキルの理解度を測定できるものにしてください。`;
+上記のプルリクエストの内容を分析して、指定された数のクイズを生成してください。各問題は変更内容に関連し、プログラミングスキルの理解度を測定できるものにしてください。
+
+出力は必ず JSON のみで返してください。前後に説明文やコードフェンスは付けず、トップレベルは次のスキーマに従ってください：
+{
+  "questions": [
+    {
+      "id": "string",
+      "type": "multiple-choice|true-false|code-review|explanation",
+      "content": "問題文",
+      "code": { "language": "string", "content": "string", "filename": "string(任意)" },
+      "options": [ { "id": "string", "text": "string", "isCorrect": boolean } ],
+      "correctAnswer": "string | string[]",
+      "explanation": "string",
+      "difficulty": "easy|medium|hard",
+      "tags": ["string"]
+    }
+  ]
+}`;
   }
 
   private parseResponse(content: string, questionCount: number): Question[] {
-    // JSONレスポンスを抽出
-    const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/```\n([\s\S]*?)\n```/);
-    const jsonContent = jsonMatch ? jsonMatch[1] : content;
-
-    try {
-      const parsed = JSON.parse(jsonContent);
-      const questions = parsed.questions || [];
-
-      return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
+    const toQuestion = (q: RawQuestionResponse, index: number): Question => {
+      const codeSnippet = q.code && typeof q.code.content === 'string'
+        ? {
+            language: q.code.language ?? 'unknown',
+            content: q.code.content,
+            filename: q.code.filename,
+          }
+        : undefined;
+      return {
         id: q.id || `question-${index + 1}`,
         type: q.type || 'multiple-choice',
         content: q.content,
-        code: q.code || undefined,
+        code: codeSnippet,
         options: q.options || undefined,
         correctAnswer: q.correctAnswer,
         explanation: q.explanation,
         difficulty: q.difficulty || 'medium',
         tags: q.tags || [],
-      }));
+      };
+    };
+
+    // JSONレスポンスを抽出（json/jsonc, 大文字小文字, 改行の有無に寛容）
+    const fenceRegex = /```(?:jsonc?|JSONC?|json|JSON)?\s*\n?([\s\S]*?)\n?```/;
+    const jsonMatch = content.match(fenceRegex);
+    let jsonContent = (jsonMatch ? jsonMatch[1] : content).trim();
+
+    // まれに先頭の波括弧が省かれるケースに対処
+    if (!jsonContent.startsWith('{') && /(^|\n)\s*"?questions"?\s*:\s*\[/i.test(jsonContent)) {
+      jsonContent = `{${jsonContent}}`;
+    }
+
+    // 最初のパース試行
+    const tryParse = (text: string): unknown => JSON.parse(text);
+
+    try {
+      const parsed = tryParse(jsonContent) as { questions?: RawQuestionResponse[] };
+      const questions = parsed.questions || [];
+
+      return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => toQuestion(q, index));
     } catch (error) {
-      throw new AIServiceError('Failed to parse Google AI response', 'google', { content, error });
+      // フェンスが多重になっている/末尾の ``` が残るなどのケースに最終フォールバック
+      const firstBrace = jsonContent.indexOf('{');
+      const lastBrace = jsonContent.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        try {
+          const recovered = jsonContent.slice(firstBrace, lastBrace + 1);
+          const parsed = JSON.parse(recovered) as { questions?: RawQuestionResponse[] };
+          const questions = parsed.questions || [];
+          return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => toQuestion(q, index));
+        } catch {
+          // fallthrough
+        }
+      }
+      throw new AIServiceError('Failed to parse Google AI response', 'google', { content, extracted: jsonContent, error });
     }
   }
 }
@@ -442,7 +510,7 @@ export class LocalLLMService extends AIService {
         'Content-Type': 'application/json',
         ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` }),
       },
-      timeout: 120000, // ローカルLLMは時間がかかる可能性があるため長めに設定
+      timeout: 1200000, // ローカルLLMは時間がかかる可能性があるため長めに設定
     });
   }
 
@@ -452,9 +520,19 @@ export class LocalLLMService extends AIService {
 
   async validateConnection(): Promise<boolean> {
     try {
-      await this.client.get('/api/tags');
+      const res = await this.client.get('/api/tags');
+      const models: unknown[] = Array.isArray(res?.data?.models) ? res.data.models : [];
+      const names = models
+        .map((model) => (isRecord(model) && typeof model.name === 'string' ? model.name : undefined))
+        .filter((name): name is string => typeof name === 'string');
+      if (this.config.model && !names.includes(this.config.model)) {
+        throw new AIServiceError(`モデルが見つかりません: ${this.config.model}. インストール済み: ${names.join(', ') || 'なし'}`, 'local');
+      }
       return true;
-    } catch {
+    } catch (e) {
+      if (e instanceof AIServiceError) {
+        throw e;
+      }
       return false;
     }
   }
@@ -473,6 +551,8 @@ export class LocalLLMService extends AIService {
           top_p: 0.9,
         },
       });
+
+      console.log(response);
 
       const content = response?.data?.response ?? '';
       if (typeof content !== 'string' || content.trim() === '') {
@@ -525,13 +605,37 @@ ${filesText}
 - 難易度: ${difficulty}
 - 重点領域: ${focusAreaText}
 
-上記のプルリクエストの内容を分析して、指定された数のクイズを生成してください。各問題は変更内容に関連し、プログラミングスキルの理解度を測定できるものにしてください。`;
+上記のプルリクエストの内容を分析して、指定された数のクイズを生成してください。各問題は変更内容に関連し、プログラミングスキルの理解度を測定できるものにしてください。
+
+出力は必ず JSON のみで返してください。前後に説明文やコードフェンスは付けず、トップレベルは次のスキーマに従ってください。
+
+{
+  "questions": [
+    {
+      "id": "string",
+      "type": "multiple-choice|true-false|code-review|explanation",
+      "content": "問題文",
+      "code": { "language": "string", "content": "string", "filename": "string(任意)" },
+      "options": [ { "id": "string", "text": "string", "isCorrect": boolean } ],
+      "correctAnswer": "string | string[]",
+      "explanation": "string",
+      "difficulty": "easy|medium|hard",
+      "tags": ["string"]
+    }
+  ]
+}
+
+JSON の value は必ず日本語で返してください。
+
+`;
   }
 
   private parseResponse(content: string, questionCount: number): Question[] {
     try {
       const parsed = JSON.parse(content);
       const questions = parsed.questions || [];
+
+      console.log(content);
 
       return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
         id: q.id || `question-${index + 1}`,
@@ -561,10 +665,13 @@ export class AIServiceFactory {
         return new OpenAIService(config.apiKeys.openai);
 
       case 'google':
-        if (!config.apiKeys?.google) {
-          throw new AIServiceError('Google API key is required', 'google');
+        {
+          const apiKey = config.apiKeys?.google || env.google.apiKey;
+          if (!apiKey) {
+            throw new AIServiceError('Google API key is required', 'google');
+          }
+          return new GoogleAIService(apiKey, config.googleModel);
         }
-        return new GoogleAIService(config.apiKeys.google);
 
       case 'local':
         if (!config.localLLM) {

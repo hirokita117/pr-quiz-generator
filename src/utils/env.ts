@@ -17,6 +17,7 @@ export const env = {
   google: {
     apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
     apiUrl: import.meta.env.VITE_GOOGLE_API_URL || 'https://generativelanguage.googleapis.com/v1',
+    model: import.meta.env.VITE_GOOGLE_MODEL || 'gemini-pro',
   },
   
   // ローカルLLM設定

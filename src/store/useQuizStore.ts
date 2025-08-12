@@ -20,10 +20,39 @@ interface QuizStore extends UIState {
   reset: () => void;
 }
 
+// ローカルストレージから設定をハイドレート
+function readLocalStorage(key: string): string | undefined {
+  try {
+    if (typeof window !== 'undefined' && 'localStorage' in window) {
+      const v = window.localStorage.getItem(key);
+      return v ?? undefined;
+    }
+  } catch (error) {
+    // localStorage の制限やブラウザ設定により失敗する場合がある
+    console.warn('Failed to read from localStorage:', error);
+  }
+  return undefined;
+}
+
+const savedOpenaiKey = readLocalStorage('pr-quiz-openai-key');
+const savedGoogleKey = readLocalStorage('pr-quiz-google-key');
+const savedGoogleModel = readLocalStorage('pr-quiz-google-model');
+const savedLocalEndpoint = readLocalStorage('pr-quiz-local-endpoint');
+const savedLocalModel = readLocalStorage('pr-quiz-local-model');
+
 const initialConfig: QuizConfig = {
   aiProvider: env.app.defaultAIProvider as AIProvider,
   questionCount: env.app.defaultQuestionCount,
   difficulty: env.app.defaultDifficulty as 'easy' | 'medium' | 'hard' | 'mixed',
+  googleModel: savedGoogleModel || env.google.model,
+  apiKeys: {
+    ...(savedOpenaiKey ? { openai: savedOpenaiKey } : {}),
+    ...(savedGoogleKey ? { google: savedGoogleKey } : {}),
+  },
+  localLLM: {
+    endpoint: savedLocalEndpoint || env.localLLM.endpoint,
+    model: savedLocalModel || env.localLLM.model,
+  },
   cache: {
     enabled: env.cache.enabled,
     ttl: env.cache.ttl,
