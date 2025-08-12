@@ -510,7 +510,7 @@ export class LocalLLMService extends AIService {
         'Content-Type': 'application/json',
         ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` }),
       },
-      timeout: 120000, // ローカルLLMは時間がかかる可能性があるため長めに設定
+      timeout: 1200000, // ローカルLLMは時間がかかる可能性があるため長めに設定
     });
   }
 
@@ -605,13 +605,37 @@ ${filesText}
 - 難易度: ${difficulty}
 - 重点領域: ${focusAreaText}
 
-上記のプルリクエストの内容を分析して、指定された数のクイズを生成してください。各問題は変更内容に関連し、プログラミングスキルの理解度を測定できるものにしてください。`;
+上記のプルリクエストの内容を分析して、指定された数のクイズを生成してください。各問題は変更内容に関連し、プログラミングスキルの理解度を測定できるものにしてください。
+
+出力は必ず JSON のみで返してください。前後に説明文やコードフェンスは付けず、トップレベルは次のスキーマに従ってください。
+
+{
+  "questions": [
+    {
+      "id": "string",
+      "type": "multiple-choice|true-false|code-review|explanation",
+      "content": "問題文",
+      "code": { "language": "string", "content": "string", "filename": "string(任意)" },
+      "options": [ { "id": "string", "text": "string", "isCorrect": boolean } ],
+      "correctAnswer": "string | string[]",
+      "explanation": "string",
+      "difficulty": "easy|medium|hard",
+      "tags": ["string"]
+    }
+  ]
+}
+
+JSON の value は必ず日本語で返してください。
+
+`;
   }
 
   private parseResponse(content: string, questionCount: number): Question[] {
     try {
       const parsed = JSON.parse(content);
       const questions = parsed.questions || [];
+
+      console.log(content);
 
       return questions.slice(0, questionCount).map((q: RawQuestionResponse, index: number) => ({
         id: q.id || `question-${index + 1}`,
